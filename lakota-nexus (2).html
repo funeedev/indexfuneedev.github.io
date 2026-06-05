@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lakota Nexus</title>
+<style>
+/* ── RESET ── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+button { font-family:inherit; cursor:pointer; }
+a { text-decoration:none; }
+textarea, input { font-family:inherit; }
+
+/* ── TOKENS ── */
+:root {
+  --gold:          #e8c56a;
+  --gold-dim:      #b8943a;
+  --gold-faint:    rgba(232,197,106,0.12);
+  --star-white:    #f0eaff;
+  --nebula-blue:   #3a6bcc;
+  --nebula-purple: #7c4dcc;
+  --nebula-teal:   #2aa8a8;
+  --deep-space:    #03020a;
+  --card-bg:       rgba(255,255,255,0.04);
+  --card-border:   rgba(232,197,106,0.15);
+  --muted:         rgba(240,234,255,0.5);
+  --muted-hi:      rgba(240,234,255,0.75);
+}
+
+html, body {
+  width:100%; min-height:100vh;
+  background:var(--deep-space);
+  color:var(--star-white);
+  font-family:'Segoe UI', system-ui, sans-serif;
+  overflow-x:hidden;
+}
+
+/* ══════════════════════════════════════
+   GALAXY INTRO
+══════════════════════════════════════ */
+#intro {
+  position:fixed; inset:0; z-index:2000;
+  background:#04020f;
+  display:flex; align-items:center; justify-content:center; flex-direction:column;
+  transition:opacity 0.8s ease;
+}
+#intro.fade-out { opacity:0; pointer-events:none; }
+#galaxy-canvas { position:absolute; inset:0; }
+.intro-wordmark {
+  position:relative; z-index:2;
+  display:flex; flex-direction:column; align-items:center; gap:0.5rem;
+  opacity:0; transform:translateY(8px);
+  transition:opacity 0.9s ease, transform 0.9s ease;
+  padding:2rem 3rem 1.5rem;
+  background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(4,2,15,0.72) 0%, transparent 100%);
+  border-radius:50%;
+}
+.intro-wordmark.visible { opacity:1; transform:translateY(0); }
+.intro-wordmark h1 {
+  font-size:clamp(2rem,6vw,4.8rem);
+  font-weight:300; letter-spacing:0.28em; text-transform:uppercase;
+  color:#ffffff;
+  text-shadow: 0 0 40px rgba(232,197,106,0.6), 0 0 80px rgba(180,140,255,0.3), 0 2px 4px rgba(0,0,0,0.8);
+}
+.intro-wordmark p {
+  font-size:clamp(0.65rem,1.5vw,0.85rem);
+  letter-spacing:0.45em; text-transform:uppercase;
+  color:#e8c56a;
+  text-shadow: 0 0 20px rgba(232,197,106,0.7), 0 1px 3px rgba(0,0,0,0.9);
+}
+.intro-enter {
+  position:relative; z-index:2;
+  margin-top:2.5rem;
+  padding:0.7rem 2.5rem;
+  border:1px solid rgba(232,197,106,0.7);
+  border-radius:100px;
+  background:rgba(10,6,30,0.6);
+  color:#f5dfa0; font-size:0.8rem;
+  letter-spacing:0.2em; text-transform:uppercase;
+  font-weight:400;
+  text-shadow: 0 0 12px rgba(232,197,106,0.5);
+  opacity:0; transition:opacity 0.6s ease 0.4s, background 0.3s, transform 0.2s;
+}
+.intro-enter.visible { opacity:1; }
+.intro-enter:hover { background:rgba(232,197,106,0.15); transform:translateY(-2px); }
+
+/* ══════════════════════════════════════
+   AMBIENT: STARS + NEBULA
+══════════════════════════════════════ */
+#starfield { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.star {
+  position:absolute; border-radius:50%; background:white;
+  animation:twinkle var(--tw) ease-in-out infinite alternate;
+  animation-delay:var(--td);
+}
+@keyframes twinkle { from{opacity:var(--a1)} to{opacity:var(--a2)} }
+
+.nebula {
+  position:fixed; border-radius:50%; filter:blur(90px);
+  pointer-events:none; z-index:0; opacity:0.1;
+  animation:nebDrift 35s ease-in-out infinite alternate;
+}
+@keyframes nebDrift { 0%{transform:translate(0,0) scale(1)} 100%{transform:translate(3%,5%) scale(1.1)} }
+.neb-1{width:700px;height:500px;background:var(--nebula-purple);top:-100px;left:-120px;}
+.neb-2{width:550px;height:400px;background:var(--nebula-blue);bottom:5%;right:-100px;animation-delay:-14s;}
+.neb-3{width:400px;height:400px;background:var(--nebula-teal);top:45%;left:32%;animation-delay:-7s;opacity:0.06;}
+
+.shooting-star {
+  position:fixed; width:1.5px; height:90px;
+  background:linear-gradient(to bottom,transparent,rgba(255,255,255,0.9),transparent);
+  border-radius:2px; pointer-events:none; z-index:1;
+  opacity:0; transform:rotate(-42deg);
+  animation:shoot 1.8s ease-out forwards;
+}
+@keyframes shoot {
+  0%  {opacity:0;transform:rotate(-42deg) translateY(-180px)}
+  12% {opacity:1}
+  85% {opacity:0.7}
+  100%{opacity:0;transform:rotate(-42deg) translateY(220px)}
+}
+
+/* ══════════════════════════════════════
+   SHELL
+══════════════════════════════════════ */
+#shell { position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; }
+
+/* ── HEADER ── */
+header {
+  position:sticky; top:0; z-index:500;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1rem 2.5rem;
+  background:rgba(3,2,10,0.7); backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(232,197,106,0.1);
+}
+.logo {
+  display:flex; align-items:center; gap:0.75rem; cursor:pointer;
+}
+.logo-orb {
+  width:34px; height:34px; border-radius:50%;
+  background:conic-gradient(var(--nebula-purple),var(--gold),var(--nebula-blue),var(--nebula-purple));
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.9rem; animation:orbSpin 20s linear infinite;
+}
+@keyframes orbSpin { to{transform:rotate(360deg)} }
+.logo-name {
+  font-size:1.1rem; font-weight:300;
+  letter-spacing:0.18em; text-transform:uppercase; color:var(--gold);
+}
+nav { display:flex; gap:0.25rem; }
+.nav-btn {
+  padding:0.45rem 1.1rem;
+  background:none; border:none; border-radius:100px;
+  color:var(--muted); font-size:0.78rem;
+  letter-spacing:0.1em; text-transform:uppercase;
+  transition:color 0.25s, background 0.25s;
+}
+.nav-btn:hover { color:var(--star-white); background:rgba(255,255,255,0.05); }
+.nav-btn.active { color:var(--gold); background:rgba(232,197,106,0.08); }
+
+/* ── PAGES ── */
+.page { display:none; flex:1; }
+.page.active { display:block; }
+
+/* ══════════════════════════════════════
+   PAGE: HOME
+══════════════════════════════════════ */
+.home-hero {
+  display:flex; flex-direction:column; align-items:center;
+  padding:7rem 2rem 5rem; text-align:center;
+}
+.hero-badge {
+  font-size:0.65rem; letter-spacing:0.4em; text-transform:uppercase;
+  color:var(--gold-dim); margin-bottom:2rem;
+}
+.hero-badge span { opacity:0.5; margin:0 0.75rem; }
+.home-hero h1 {
+  font-size:clamp(2.8rem,7vw,5.5rem); font-weight:200;
+  line-height:1.08; letter-spacing:0.05em; margin-bottom:1.25rem;
+}
+.home-hero h1 em {
+  font-style:normal;
+  background:linear-gradient(120deg,var(--gold),#c8b8ff,var(--nebula-teal));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.home-hero p {
+  font-size:1rem; color:var(--muted); line-height:1.8;
+  max-width:520px; margin-bottom:3rem;
+}
+
+.home-cards {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.25rem;
+  max-width:1100px; margin:0 auto;
+  padding:0 2rem 6rem;
+}
+.home-card {
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  border-radius:22px; padding:2.25rem 2rem;
+  position:relative; overflow:hidden;
+  transition:transform 0.35s cubic-bezier(.2,0,0,1), border-color 0.3s, box-shadow 0.35s;
+  cursor:pointer;
+}
+.home-card::after {
+  content:''; position:absolute; inset:0; border-radius:22px;
+  background:linear-gradient(135deg,rgba(255,255,255,0.03),transparent);
+  pointer-events:none;
+}
+.home-card:hover {
+  transform:translateY(-6px);
+  border-color:rgba(232,197,106,0.38);
+  box-shadow:0 24px 60px rgba(0,0,0,0.55), 0 0 50px rgba(124,77,204,0.1);
+}
+.hcard-shine {
+  position:absolute; top:-50px; right:-50px;
+  width:140px; height:140px; border-radius:50%;
+  filter:blur(40px); opacity:0.18; pointer-events:none;
+}
+.home-card:nth-child(1) .hcard-shine { background:var(--nebula-purple); }
+.home-card:nth-child(2) .hcard-shine { background:var(--nebula-teal); }
+.home-card:nth-child(3) .hcard-shine { background:var(--nebula-blue); }
+.home-card:nth-child(4) .hcard-shine { background:var(--gold); }
+
+.hcard-ico {
+  width:50px; height:50px; border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.4rem; margin-bottom:1.25rem;
+}
+.home-card:nth-child(1) .hcard-ico { background:rgba(124,77,204,0.18); border:1px solid rgba(124,77,204,0.28); }
+.home-card:nth-child(2) .hcard-ico { background:rgba(42,168,168,0.18); border:1px solid rgba(42,168,168,0.28); }
+.home-card:nth-child(3) .hcard-ico { background:rgba(58,107,204,0.18); border:1px solid rgba(58,107,204,0.28); }
+.home-card:nth-child(4) .hcard-ico { background:rgba(232,197,106,0.12); border:1px solid rgba(232,197,106,0.22); }
+
+.hcard-title { font-size:1.1rem; font-weight:400; margin-bottom:0.55rem; color:var(--star-white); }
+.hcard-desc  { font-size:0.83rem; color:var(--muted); line-height:1.7; margin-bottom:1.5rem; }
+.hcard-link  {
+  display:inline-flex; align-items:center; gap:0.4rem;
+  font-size:0.72rem; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--gold-dim); transition:color 0.2s;
+}
+.home-card:hover .hcard-link { color:var(--gold); }
+.hcard-arrow { display:inline-block; transition:transform 0.3s; }
+.home-card:hover .hcard-arrow { transform:translateX(5px); }
+
+.wotd-banner {
+  max-width:1100px; margin:0 auto; padding:0 2rem 3rem;
+}
+.wotd-inner {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1.5rem;
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:16px; padding:1.5rem 2rem;
+}
+.wotd-left { display:flex; flex-direction:column; gap:0.3rem; }
+.wotd-eyebrow { font-size:0.62rem; letter-spacing:0.35em; text-transform:uppercase; color:var(--gold-dim); }
+.wotd-word { font-size:1.9rem; font-weight:300; color:var(--gold); letter-spacing:0.05em; }
+.wotd-pos { font-size:0.72rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--nebula-teal); }
+.wotd-meaning { font-size:0.88rem; color:var(--muted-hi); line-height:1.65; max-width:460px; }
+
+/* ══════════════════════════════════════
+   PAGE: TRANSLATE
+══════════════════════════════════════ */
+.page-header {
+  padding:4rem 2.5rem 2.5rem;
+  max-width:1100px; margin:0 auto;
+  border-bottom:1px solid rgba(232,197,106,0.08);
+}
+.page-header h2 {
+  font-size:clamp(1.8rem,4vw,3rem); font-weight:200;
+  letter-spacing:0.06em; margin-bottom:0.5rem;
+}
+.page-header h2 em {
+  font-style:normal; color:var(--gold);
+}
+.page-header p { font-size:0.88rem; color:var(--muted); line-height:1.7; max-width:520px; }
+
+.translate-body {
+  max-width:1100px; margin:0 auto; padding:2.5rem 2.5rem 5rem;
+  display:flex; flex-direction:column; gap:1.5rem;
+}
+
+.lang-bar {
+  display:flex; align-items:center; gap:1rem;
+}
+.lang-pill {
+  padding:0.45rem 1.25rem;
+  border:1px solid var(--card-border); border-radius:100px;
+  background:var(--card-bg); font-size:0.78rem;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--gold-dim);
+}
+.swap-btn {
+  width:36px; height:36px; border-radius:50%;
+  background:var(--card-bg); border:1px solid var(--card-border);
+  color:var(--muted); font-size:1rem;
+  display:flex; align-items:center; justify-content:center;
+  transition:color 0.2s, background 0.2s;
+}
+.swap-btn:hover { color:var(--gold); background:rgba(232,197,106,0.08); }
+
+.lang-select {
+  padding:0.5rem 2.2rem 0.5rem 1.25rem;
+  border:1px solid var(--card-border); border-radius:100px;
+  background:var(--card-bg); color:var(--gold); font-size:0.78rem;
+  letter-spacing:0.1em; text-transform:uppercase;
+  font-family:inherit; outline:none; cursor:pointer;
+  appearance:none; -webkit-appearance:none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--gold-dim) 50%),
+    linear-gradient(135deg, var(--gold-dim) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  transition:border-color 0.2s, color 0.2s, background-color 0.2s;
+}
+.lang-select:hover, .lang-select:focus { border-color:rgba(232,197,106,0.4); }
+.lang-select option { background:#0a0618; color:var(--star-white); letter-spacing:0.04em; }
+
+.config-bar {
+  display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap;
+  padding:0.6rem 1.25rem;
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:100px;
+  width:fit-content; max-width:100%;
+}
+.config-label {
+  font-size:0.62rem; letter-spacing:0.3em; text-transform:uppercase;
+  color:var(--gold-dim); display:flex; align-items:center; gap:0.4rem;
+}
+.gender-group { display:flex; gap:0.3rem; }
+.gender-btn {
+  padding:0.4rem 1rem; border-radius:100px;
+  background:transparent; border:1px solid var(--card-border);
+  color:var(--muted); font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase;
+  transition:color 0.2s, border-color 0.2s, background 0.2s;
+}
+.gender-btn:hover { color:var(--star-white); border-color:rgba(232,197,106,0.3); }
+.gender-btn.active { background:rgba(232,197,106,0.12); border-color:rgba(232,197,106,0.4); color:var(--gold); }
+
+.tts-btn {
+  padding:0.4rem 0.9rem; border-radius:100px;
+  background:rgba(232,197,106,0.06); border:1px solid rgba(232,197,106,0.2);
+  color:var(--gold-dim); font-size:0.72rem; letter-spacing:0.06em;
+  display:inline-flex; align-items:center; gap:0.4rem;
+  transition:color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.tts-btn:hover:not(:disabled) { color:var(--gold); border-color:rgba(232,197,106,0.45); background:rgba(232,197,106,0.13); transform:translateY(-1px); }
+.tts-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.tts-btn.playing { background:rgba(124,77,204,0.18); border-color:rgba(124,77,204,0.5); color:#d4c4ff; }
+.tts-btn.playing .tts-ico { animation:ttsPulse 0.9s ease-in-out infinite; }
+@keyframes ttsPulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.18);opacity:0.7} }
+
+.translate-panes {
+  display:grid; grid-template-columns:1fr 1fr; gap:1.25rem;
+}
+@media(max-width:680px){ .translate-panes{grid-template-columns:1fr;} }
+
+.t-pane {
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:18px; padding:1.5rem;
+  display:flex; flex-direction:column; gap:0.75rem;
+  transition:border-color 0.3s;
+}
+.t-pane:focus-within { border-color:rgba(232,197,106,0.35); }
+.t-pane-label {
+  font-size:0.62rem; letter-spacing:0.3em; text-transform:uppercase;
+  color:var(--gold-dim); display:flex; align-items:center; gap:0.5rem;
+}
+.t-pane-label .pip { width:5px; height:5px; border-radius:50%; background:var(--gold); }
+.t-pane textarea {
+  background:none; border:none; outline:none; resize:none;
+  color:var(--star-white); font-size:1.05rem; line-height:1.7;
+  min-height:160px; caret-color:var(--gold);
+}
+.t-pane textarea::placeholder { color:rgba(240,234,255,0.2); }
+.t-pane textarea[readonly] { color:var(--gold); opacity:0.9; cursor:default; }
+.t-pane-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  border-top:1px solid rgba(232,197,106,0.08); padding-top:0.75rem;
+  font-size:0.72rem; color:var(--muted);
+}
+.char-count { font-variant-numeric:tabular-nums; }
+
+.translate-actions {
+  display:flex; gap:0.75rem; flex-wrap:wrap;
+}
+.btn-pri {
+  padding:0.7rem 2rem; border-radius:100px;
+  background:linear-gradient(135deg,var(--nebula-purple),var(--nebula-blue));
+  border:1px solid rgba(232,197,106,0.25);
+  color:#fff; font-size:0.82rem; letter-spacing:0.1em; text-transform:uppercase;
+  transition:transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+}
+.btn-pri:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(124,77,204,0.4); border-color:var(--gold-dim); }
+.btn-sec {
+  padding:0.7rem 1.5rem; border-radius:100px;
+  background:transparent; border:1px solid var(--card-border);
+  color:var(--muted); font-size:0.82rem; letter-spacing:0.1em; text-transform:uppercase;
+  transition:color 0.2s, border-color 0.2s, background 0.2s;
+}
+.btn-sec:hover { color:var(--star-white); border-color:rgba(232,197,106,0.3); background:rgba(255,255,255,0.04); }
+
+.translate-loading {
+  display:none; align-items:center; gap:0.75rem;
+  font-size:0.8rem; color:var(--muted);
+}
+.translate-loading.on { display:flex; }
+.dot-pulse { display:flex; gap:4px; }
+.dot-pulse span {
+  width:5px; height:5px; border-radius:50%; background:var(--gold);
+  animation:dpulse 1.2s ease-in-out infinite;
+}
+.dot-pulse span:nth-child(2){animation-delay:.2s}
+.dot-pulse span:nth-child(3){animation-delay:.4s}
+@keyframes dpulse{ 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+.translate-error {
+  display:none; padding:1rem 1.5rem; border-radius:12px;
+  background:rgba(226,75,74,0.08); border:1px solid rgba(226,75,74,0.2);
+  color:#f09595; font-size:0.83rem;
+}
+.translate-error.on { display:block; }
+
+/* phrase chips */
+.phrase-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem; }
+.phrase-chip {
+  padding:0.35rem 0.9rem; border-radius:100px;
+  background:rgba(232,197,106,0.07); border:1px solid rgba(232,197,106,0.15);
+  color:var(--muted); font-size:0.73rem; letter-spacing:0.05em;
+  transition:color 0.2s, border-color 0.2s, background 0.2s;
+}
+.phrase-chip:hover { color:var(--gold); border-color:rgba(232,197,106,0.35); background:rgba(232,197,106,0.12); }
+
+/* ══════════════════════════════════════
+   PAGE: DICTIONARY
+══════════════════════════════════════ */
+.dict-body {
+  max-width:1100px; margin:0 auto; padding:2.5rem 2.5rem 5rem;
+}
+.dict-search-bar {
+  display:flex; gap:0.75rem; margin-bottom:2rem; align-items:center;
+}
+.dict-input {
+  flex:1; padding:0.75rem 1.5rem; border-radius:100px;
+  background:var(--card-bg); border:1px solid var(--card-border);
+  color:var(--star-white); font-size:0.95rem; outline:none;
+  transition:border-color 0.3s; caret-color:var(--gold);
+}
+.dict-input:focus { border-color:rgba(232,197,106,0.4); }
+.dict-input::placeholder { color:rgba(240,234,255,0.22); }
+
+.dict-filters {
+  display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:2rem;
+}
+.filter-chip {
+  padding:0.35rem 0.9rem; border-radius:100px;
+  background:var(--card-bg); border:1px solid var(--card-border);
+  color:var(--muted); font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase;
+  transition:all 0.2s;
+}
+.filter-chip.active { background:rgba(232,197,106,0.12); border-color:rgba(232,197,106,0.35); color:var(--gold); }
+.filter-chip:hover { color:var(--star-white); border-color:rgba(232,197,106,0.25); }
+
+.dict-meta { font-size:0.72rem; color:var(--muted); margin-bottom:1.5rem; letter-spacing:0.05em; }
+.dict-meta strong { color:var(--gold-dim); }
+
+.dict-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem;
+}
+.dict-entry {
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:16px; padding:1.5rem;
+  transition:border-color 0.3s, transform 0.25s;
+  cursor:default;
+}
+.dict-entry:hover { border-color:rgba(232,197,106,0.32); transform:translateY(-2px); }
+.de-lakota  { font-size:1.25rem; color:var(--gold); font-weight:400; margin-bottom:0.2rem; }
+.de-pos     { font-size:0.65rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--nebula-teal); margin-bottom:0.6rem; }
+.de-en      { font-size:0.85rem; color:var(--muted-hi); line-height:1.65; }
+.de-example { font-size:0.77rem; color:rgba(240,234,255,0.33); font-style:italic; margin-top:0.6rem; }
+
+.dict-empty {
+  text-align:center; padding:4rem 2rem;
+  color:var(--muted); font-size:0.88rem; display:none;
+}
+.dict-empty .em-ico { font-size:2.5rem; margin-bottom:1rem; opacity:0.4; }
+
+.dict-loading {
+  display:none; text-align:center; padding:3rem;
+  color:var(--muted); font-size:0.85rem; align-items:center;
+  flex-direction:column; gap:0.75rem;
+}
+.dict-loading.on { display:flex; }
+
+/* ══════════════════════════════════════
+   PAGE: ABOUT (simple)
+══════════════════════════════════════ */
+.about-body {
+  max-width:780px; margin:0 auto; padding:3rem 2.5rem 6rem;
+}
+.about-body h3 { font-size:1rem; font-weight:400; color:var(--gold); margin:2rem 0 0.6rem; letter-spacing:0.05em; }
+.about-body p  { font-size:0.88rem; color:var(--muted); line-height:1.8; }
+.about-stats {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:1rem; margin-top:2.5rem;
+}
+.stat-tile {
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:16px; padding:1.5rem 1rem; text-align:center;
+}
+.stat-n { font-size:2rem; font-weight:200; color:var(--gold); }
+.stat-l { font-size:0.65rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--muted); margin-top:0.3rem; }
+
+/* ══════════════════════════════════════
+   FOOTER
+══════════════════════════════════════ */
+footer {
+  border-top:1px solid rgba(232,197,106,0.07);
+  text-align:center; padding:2rem;
+  font-size:0.72rem; color:var(--muted); letter-spacing:0.1em;
+  line-height:1.9;
+}
+footer strong { color:var(--gold-dim); font-weight:400; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  header{ padding:0.85rem 1.25rem; }
+  .logo-name{ font-size:0.95rem; }
+  .nav-btn{ padding:0.4rem 0.75rem; font-size:0.72rem; }
+  .page-header,.translate-body,.dict-body,.about-body{ padding-left:1.25rem; padding-right:1.25rem; }
+  .home-cards{ padding-left:1.25rem; padding-right:1.25rem; }
+  .wotd-banner{ padding-left:1.25rem; padding-right:1.25rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ GALAXY INTRO ══ -->
+<div id="intro">
+  <canvas id="galaxy-canvas"></canvas>
+  <div class="intro-wordmark" id="intro-wm">
+    <h1>Lakota Nexus</h1>
+    <p>✦ &nbsp; Wičhóiye Owáŋyaŋke &nbsp; ✦</p>
+  </div>
+  <button class="intro-enter" id="intro-enter" onclick="enterSite()">Enter the Nexus →</button>
+</div>
+
+<!-- ══ AMBIENT ══ -->
+<div id="starfield"></div>
+<div class="nebula neb-1"></div>
+<div class="nebula neb-2"></div>
+<div class="nebula neb-3"></div>
+
+<!-- ══ SHELL ══ -->
+<div id="shell" style="display:none;">
+
+  <header>
+    <div class="logo" onclick="goPage('home')">
+      <div class="logo-orb">✦</div>
+      <div class="logo-name">Lakota Nexus</div>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-page="home"    onclick="goPage('home')">Home</button>
+      <button class="nav-btn"        data-page="translate" onclick="goPage('translate')">Translate</button>
+      <button class="nav-btn"        data-page="dictionary" onclick="goPage('dictionary')">Dictionary</button>
+      <button class="nav-btn"        data-page="about"   onclick="goPage('about')">About</button>
+    </nav>
+  </header>
+
+  <!-- ════ PAGE: HOME ════ -->
+  <div class="page active" id="page-home">
+    <div class="home-hero">
+      <div class="hero-badge">✦ <span>|</span> Lakota Language Portal <span>|</span> ✦</div>
+      <h1>Explore the Stars<br>of the <em>Lakota Language</em></h1>
+      <p>A cosmic gateway to Lakota — the living language of the Očhéthi Šakówiŋ. Translate, discover, and connect with words that have guided generations under these same stars.</p>
+    </div>
+
+    <div class="home-cards">
+      <div class="home-card" onclick="goPage('translate')">
+        <div class="hcard-shine"></div>
+        <div class="hcard-ico">⟿</div>
+        <div class="hcard-title">Lakota Translate</div>
+        <div class="hcard-desc">Translate between English and Lakota. Connect your words to one of the oldest living languages of the Great Plains.</div>
+        <div class="hcard-link">Open Translator <span class="hcard-arrow">→</span></div>
+      </div>
+
+      <div class="home-card" onclick="goPage('dictionary')">
+        <div class="hcard-shine"></div>
+        <div class="hcard-ico">◈</div>
+        <div class="hcard-title">Lakota Dictionary</div>
+        <div class="hcard-desc">Search thousands of Lakota words, explore their meanings, grammatical forms, and cultural significance.</div>
+        <div class="hcard-link">Browse Dictionary <span class="hcard-arrow">→</span></div>
+      </div>
+
+      <div class="home-card" onclick="goPage('about')">
+        <div class="hcard-shine"></div>
+        <div class="hcard-ico">✦</div>
+        <div class="hcard-title">About This Project</div>
+        <div class="hcard-desc">Lakota Nexus honors the Očhéthi Šakówiŋ by making their language accessible, searchable, and alive for every learner.</div>
+        <div class="hcard-link">Learn More <span class="hcard-arrow">→</span></div>
+      </div>
+
+      <div class="home-card">
+        <div class="hcard-shine"></div>
+        <div class="hcard-ico">◎</div>
+        <div class="hcard-title">Coming Soon</div>
+        <div class="hcard-desc">Audio pronunciation, phrase builder, cultural stories, and community contributions — all on the horizon.</div>
+        <div class="hcard-link" style="color:var(--muted)">In Development</div>
+      </div>
+    </div>
+
+    <!-- Word of the Day -->
+    <div class="wotd-banner">
+      <div class="wotd-inner">
+        <div class="wotd-left">
+          <div class="wotd-eyebrow">✦ &nbsp; Word of the Day</div>
+          <div class="wotd-word" id="wotd-word">Wičháhpi</div>
+          <div class="wotd-pos">Noun</div>
+        </div>
+        <div class="wotd-meaning" id="wotd-meaning">
+          Star — a celestial body in the night sky. Stars hold deep spiritual significance in Lakota cosmology, serving as guides and ancestors watching over the people.
+        </div>
+      </div>
+    </div>
+  </div><!-- /page-home -->
+
+  <!-- ════ PAGE: TRANSLATE ════ -->
+  <div class="page" id="page-translate">
+    <div class="page-header">
+      <h2><em>Lakota</em> Translate</h2>
+      <p>Enter text below to translate between any of 20+ languages and Lakota — including direct paths like Spanish ⇄ Lakota or Lakota ⇄ German. Pick your voice, listen to pronunciation, and connect your words to a living language that has named these lands for thousands of years.</p>
+    </div>
+    <div class="translate-body">
+
+      <div class="lang-bar">
+        <select class="lang-select" id="lang-from" onchange="onLangChange('from')" data-testid="lang-from-select"></select>
+        <button class="swap-btn" onclick="swapLangs()" title="Swap languages" data-testid="swap-langs-btn">⇄</button>
+        <select class="lang-select" id="lang-to" onchange="onLangChange('to')" data-testid="lang-to-select"></select>
+      </div>
+
+      <div class="config-bar" data-testid="voice-config-bar">
+        <div class="config-label">✦ Voice</div>
+        <div class="gender-group" role="radiogroup" aria-label="Voice gender">
+          <button class="gender-btn" data-gender="female" onclick="setGender(this,'female')" data-testid="gender-female-btn">♀ Female</button>
+          <button class="gender-btn active" data-gender="male" onclick="setGender(this,'male')" data-testid="gender-male-btn">♂ Male</button>
+        </div>
+      </div>
+
+      <div class="translate-panes">
+        <div class="t-pane">
+          <div class="t-pane-label"><span class="pip"></span><span id="pane-from-label">English</span></div>
+          <textarea id="t-input" placeholder="Type or paste text here…" oninput="onTranslateInput()" data-testid="translate-input"></textarea>
+          <div class="t-pane-footer">
+            <span class="char-count"><span id="char-n">0</span> characters</span>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <button class="tts-btn" id="tts-input-btn" onclick="playTTS('input')" data-testid="tts-input-btn" disabled>
+                <span class="tts-ico">🔊</span><span class="tts-lbl">Listen</span>
+              </button>
+              <button class="btn-sec" style="padding:0.3rem 0.9rem;font-size:0.7rem;" onclick="clearTranslate()" data-testid="clear-input-btn">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div class="t-pane">
+          <div class="t-pane-label"><span class="pip"></span><span id="pane-to-label">Lakota</span></div>
+          <textarea id="t-output" readonly placeholder="Translation will appear here…" data-testid="translate-output"></textarea>
+          <div class="t-pane-footer">
+            <button class="tts-btn" id="tts-output-btn" onclick="playTTS('output')" data-testid="tts-output-btn" disabled>
+              <span class="tts-ico">🔊</span><span class="tts-lbl">Listen</span>
+            </button>
+            <span style="font-style:italic;opacity:0.6;">Powered by Lakota API</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="translate-actions">
+        <button class="btn-pri" onclick="doTranslate()" data-testid="translate-submit-btn">Translate →</button>
+        <button class="btn-sec" onclick="clearTranslate()" data-testid="translate-clear-btn">Clear</button>
+      </div>
+
+      <div class="translate-loading" id="t-loading">
+        <div class="dot-pulse"><span></span><span></span><span></span></div>
+        Translating…
+      </div>
+      <div class="translate-error" id="t-error"></div>
+
+      <!-- Common phrases -->
+      <div>
+        <div style="font-size:0.65rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:0.75rem;">✦ &nbsp; Common Phrases</div>
+        <div class="phrase-row" id="phrase-row"></div>
+      </div>
+
+    </div>
+  </div><!-- /page-translate -->
+
+  <!-- ════ PAGE: DICTIONARY ════ -->
+  <div class="page" id="page-dictionary">
+    <div class="page-header">
+      <h2>Lakota <em>Dictionary</em></h2>
+      <p>Search the Lakota lexicon by English meaning or Lakota spelling. Each entry includes part of speech, cultural notes, and example usage.</p>
+    </div>
+    <div class="dict-body">
+      <div class="dict-search-bar">
+        <input class="dict-input" id="dict-q" type="text" placeholder="Search in English or Lakota…" oninput="onDictSearch()" />
+        <button class="btn-pri" style="white-space:nowrap" onclick="onDictSearch()">Search</button>
+      </div>
+      <div class="dict-filters" id="dict-filters">
+        <button class="filter-chip active" data-pos="all"     onclick="setFilter(this,'all')">All</button>
+        <button class="filter-chip"        data-pos="noun"    onclick="setFilter(this,'noun')">Nouns</button>
+        <button class="filter-chip"        data-pos="verb"    onclick="setFilter(this,'verb')">Verbs</button>
+        <button class="filter-chip"        data-pos="adjective" onclick="setFilter(this,'adjective')">Adjectives</button>
+        <button class="filter-chip"        data-pos="phrase"  onclick="setFilter(this,'phrase')">Phrases</button>
+        <button class="filter-chip"        data-pos="ceremony" onclick="setFilter(this,'ceremony')">Ceremonies</button>
+      </div>
+      <div class="dict-meta" id="dict-meta"></div>
+      <div class="dict-loading" id="dict-loading"><div class="dot-pulse"><span></span><span></span><span></span></div>Loading dictionary…</div>
+      <div class="dict-grid" id="dict-grid"></div>
+      <div class="dict-empty" id="dict-empty">
+        <div class="em-ico">◈</div>
+        No entries match your search. Try different spelling or a broader term.
+      </div>
+    </div>
+  </div><!-- /page-dictionary -->
+
+  <!-- ════ PAGE: ABOUT ════ -->
+  <div class="page" id="page-about">
+    <div class="page-header">
+      <h2>About <em>Lakota Nexus</em></h2>
+      <p>A digital gathering place for the Lakota language and its learners.</p>
+    </div>
+    <div class="about-body">
+      <p>Lakota Nexus was built as a digital gathering place — a <em>nexus</em> — for the Lakota language and those who wish to learn it. Like stars in a constellation, each word connects to something greater. This platform honors the Očhéthi Šakówiŋ and their living language by making it accessible, searchable, and alive for every learner.</p>
+      <h3>Language</h3>
+      <p>Lakota (Lak̇ȟótiyapi) is a Siouan language spoken by the Lakota people of the Great Plains. It is one of the three major dialects of the Sioux language, alongside Dakota and Nakota. The language features complex verb morphology, evidential markers, and a rich vocabulary for the natural world.</p>
+      <h3>Our Approach</h3>
+      <p>Every entry is sourced with care and respect for the communities who carry this language. We are committed to accuracy, cultural sensitivity, and ongoing collaboration with Lakota speakers and educators. This platform is a living project — always growing.</p>
+      <h3>API & Data</h3>
+      <p>Lakota Nexus is built with an open API architecture. Translation and dictionary data are served from a community-maintained backend, making it possible for developers and educators to build on top of this resource.</p>
+      <div class="about-stats">
+        <div class="stat-tile"><div class="stat-n">3,000+</div><div class="stat-l">Dictionary Entries</div></div>
+        <div class="stat-tile"><div class="stat-n">7</div><div class="stat-l">Dialect Groups</div></div>
+        <div class="stat-tile"><div class="stat-n">∞</div><div class="stat-l">Words to Learn</div></div>
+        <div class="stat-tile"><div class="stat-n">Mitákuye</div><div class="stat-l">All My Relations</div></div>
+      </div>
+    </div>
+  </div><!-- /page-about -->
+
+  <footer>
+    <div>✦ &nbsp; Lakota Nexus &nbsp; ✦</div>
+    <div>Built in honor of the <strong>Lakota people</strong> and their enduring language.</div>
+    <div style="margin-top:0.25rem;font-size:0.63rem;opacity:0.55;">Wičháhpi — Stars guide us home.</div>
+  </footer>
+
+</div><!-- /shell -->
+
+<script>
+/* ════════════════════════════════════
+   GALAXY INTRO  — complete rewrite
+════════════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('galaxy-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H;
+
+  function resize(){
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  /* ── Deep-space background gradient (not pure black) ── */
+  function drawBg(){
+    // base: very dark indigo, not #000
+    ctx.fillStyle = '#04020f';
+    ctx.fillRect(0, 0, W, H);
+
+    // large soft nebula clouds painted on the background itself
+    const clouds = [
+      { x:0.18, y:0.22, rx:0.32, ry:0.22, col:'rgba(60,30,120,0.18)' },
+      { x:0.75, y:0.65, rx:0.28, ry:0.20, col:'rgba(20,60,130,0.15)' },
+      { x:0.50, y:0.50, rx:0.18, ry:0.14, col:'rgba(100,40,160,0.10)' },
+      { x:0.85, y:0.15, rx:0.20, ry:0.16, col:'rgba(30,90,110,0.12)' },
+      { x:0.10, y:0.80, rx:0.22, ry:0.16, col:'rgba(80,20,100,0.12)' },
+    ];
+    for(const c of clouds){
+      const gx = c.x*W, gy = c.y*H;
+      const gr = Math.max(c.rx*W, c.ry*H);
+      const g  = ctx.createRadialGradient(gx,gy,0,gx,gy,gr);
+      g.addColorStop(0, c.col);
+      g.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(gx, gy, c.rx*W, c.ry*H, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  /* ── Background star field (tiny, dim, spread everywhere) ── */
+  const bgStars = [];
+  for(let i=0;i<600;i++){
+    bgStars.push({
+      x: Math.random()*2-1,   // –1 … 1 normalised, mapped at draw time
+      y: Math.random()*2-1,
+      r: Math.random()*0.7+0.2,
+      a: Math.random()*0.35+0.08,
+    });
+  }
+
+  /* ── Galaxy particles ── */
+  const NUM_ARMS   = 3;
+  const STARS      = 3200;
+  const particles  = [];
+
+  for(let i=0;i<STARS;i++){
+    // which arm?
+    const arm   = Math.floor(Math.random()*NUM_ARMS);
+    // distance from centre  (weighted toward middle)
+    const dist  = Math.pow(Math.random(), 0.45);
+    // base angle for this arm
+    const armAngle = (arm / NUM_ARMS) * Math.PI * 2;
+    // tight spiral: more wind-up at larger radii
+    const wind  = dist * 3.2;
+    const spread = (Math.random()-0.5) * (0.55 - dist*0.3);  // wider at edges
+    const angle = armAngle + wind + spread;
+
+    // flatten into a disc
+    const maxR  = 0.42 * Math.min(W||800, H||600);
+    const px    = Math.cos(angle) * dist * maxR;
+    const py    = Math.sin(angle) * dist * maxR * 0.48;  // disc flattening
+
+    // dust/scatter halo — small fraction of stars go off-arm
+    const isHalo = Math.random() < 0.12;
+    const hx = isHalo ? (Math.random()*2-1)*maxR*0.55 : px;
+    const hy = isHalo ? (Math.random()*2-1)*maxR*0.28 : py;
+
+    // colour: inner core = warm gold/white, arms = blue-white, tips = purple/pink
+    let col;
+    if(dist < 0.12){
+      // bright core: warm white-gold
+      col = `hsl(${40+Math.random()*20},${30+Math.random()*25}%,${88+Math.random()*12}%)`;
+    } else if(dist < 0.35){
+      // arm body: cool blue-white with occasional teal
+      const h = Math.random()<0.3 ? 185+Math.random()*30 : 220+Math.random()*30;
+      col = `hsl(${h},${50+Math.random()*30}%,${72+Math.random()*22}%)`;
+    } else {
+      // outer tips: violet-purple-pink
+      col = `hsl(${260+Math.random()*60},${40+Math.random()*30}%,${60+Math.random()*25}%)`;
+    }
+
+    particles.push({
+      x:  isHalo ? hx : px,
+      y:  isHalo ? hy : py,
+      r:  isHalo ? Math.random()*0.6+0.2 : Math.random()*1.1+0.25,
+      a:  isHalo ? Math.random()*0.18+0.04 : Math.random()*0.55+0.18,
+      col,
+      dist,
+    });
+  }
+
+  /* ── Nebula wisps drawn ON the galaxy (not on the bg) ── */
+  const wisps = [
+    { dx:0.08, dy:-0.04, r:0.14, col:'rgba(80,40,180,0.09)' },
+    { dx:-0.12,dy: 0.05, r:0.13, col:'rgba(20,80,160,0.08)' },
+    { dx: 0.00,dy: 0.00, r:0.07, col:'rgba(232,197,106,0.07)'},
+    { dx: 0.18,dy: 0.08, r:0.10, col:'rgba(40,160,160,0.06)' },
+    { dx:-0.16,dy:-0.08, r:0.11, col:'rgba(160,40,120,0.07)' },
+  ];
+
+  let startTime = null;
+  let running   = true;
+
+  function frame(ts){
+    if(!running) return;
+    if(!startTime) startTime = ts;
+    const t   = (ts - startTime) / 1000;   // seconds elapsed
+    const cx  = W/2, cy = H/2;
+
+    // ── 1. repaint background each frame (no trail smear) ──
+    drawBg();
+    ctx.globalAlpha = 1;
+
+    // ── 2. background stars (fixed, not rotating) ──
+    for(const s of bgStars){
+      const sx = cx + s.x * W * 0.5;
+      const sy = cy + s.y * H * 0.5;
+      ctx.globalAlpha = s.a;
+      ctx.fillStyle = '#c8d4ff';
+      ctx.beginPath();
+      ctx.arc(sx, sy, s.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // ── 3. galaxy (zoom-in + slow spin) ──
+    const zoomIn  = Math.min(t / 2.2, 1);            // 0→1 over 2.2 s
+    const eased   = zoomIn < 1 ? 1 - Math.pow(1-zoomIn, 3) : 1; // ease-out cubic
+    const scale   = 0.15 + eased * 0.85;             // start tiny, zoom to full
+    const rot     = t * 0.10;                         // gentle rotation
+    const fadeIn  = Math.min(t / 1.6, 1);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.rotate(rot);
+
+    // nebula wisps first (behind stars)
+    const maxR = 0.42 * Math.min(W, H);
+    for(const w of wisps){
+      const wx = w.dx * maxR, wy = w.dy * maxR;
+      const wr = w.r  * maxR;
+      const g  = ctx.createRadialGradient(wx,wy,0,wx,wy,wr);
+      g.addColorStop(0, w.col);
+      g.addColorStop(1, 'transparent');
+      ctx.globalAlpha = fadeIn;
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(wx, wy, wr, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // stars
+    for(const p of particles){
+      ctx.globalAlpha = fadeIn * p.a;
+      ctx.fillStyle   = p.col;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // bright core glow
+    const coreAlpha = fadeIn * 0.65;
+    const cg = ctx.createRadialGradient(0,0,0,0,0,maxR*0.12);
+    cg.addColorStop(0, `rgba(255,245,200,${coreAlpha})`);
+    cg.addColorStop(0.3,`rgba(232,197,106,${coreAlpha*0.4})`);
+    cg.addColorStop(0.7,`rgba(120,60,200,${coreAlpha*0.12})`);
+    cg.addColorStop(1,  'transparent');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle   = cg;
+    ctx.beginPath();
+    ctx.arc(0, 0, maxR*0.12, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+
+    if(t < 60) requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+
+  // reveal wordmark + button with a slight delay after zoom settles
+  setTimeout(()=>{ document.getElementById('intro-wm').classList.add('visible'); }, 2400);
+  setTimeout(()=>{ document.getElementById('intro-enter').classList.add('visible'); }, 3000);
+})();
+
+function enterSite(){
+  const intro=document.getElementById('intro');
+  intro.classList.add('fade-out');
+  document.getElementById('shell').style.display='flex';
+  document.getElementById('shell').style.flexDirection='column';
+  setTimeout(()=>{ intro.style.display='none'; },900);
+  buildStarfield();
+  scheduleShootingStars();
+  renderPhraseChips();
+  populateLanguageSelects();
+  renderDict();
+}
+
+/* ════════════════════════════════════
+   AMBIENT
+════════════════════════════════════ */
+function buildStarfield(){
+  const sf=document.getElementById('starfield');
+  for(let i=0;i<220;i++){
+    const s=document.createElement('div');
+    s.className='star';
+    const sz=Math.random()<0.08?Math.random()*2.5+1.5:Math.random()*1.4+0.3;
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;`
+      +`width:${sz}px;height:${sz}px;`
+      +`--tw:${2+Math.random()*6}s;--td:${Math.random()*8}s;`
+      +`--a1:${0.08+Math.random()*0.3};--a2:${0.45+Math.random()*0.55};`;
+    sf.appendChild(s);
+  }
+}
+function spawnShootingStar(){
+  const s=document.createElement('div');
+  s.className='shooting-star';
+  s.style.cssText=`left:${8+Math.random()*65}%;top:${Math.random()*38}%;`;
+  document.body.appendChild(s);
+  setTimeout(()=>s.remove(),2000);
+}
+function scheduleShootingStars(){
+  setTimeout(spawnShootingStar,1200);
+  setInterval(()=>{ if(Math.random()<0.55) spawnShootingStar(); },5000);
+}
+
+/* ════════════════════════════════════
+   ROUTING
+════════════════════════════════════ */
+function goPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelector(`[data-page="${name}"]`).classList.add('active');
+  scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ════════════════════════════════════
+   ── TRANSLATE PAGE ──
+   Hook your API into doTranslate() & playTTS()
+════════════════════════════════════ */
+
+/* Supported languages (code → label). Add/remove freely.
+   "lak" is Lakota. */
+const LANGUAGES = [
+  { code:'lak', name:'Lakota' },
+  { code:'en',  name:'English' },
+  { code:'es',  name:'Spanish' },
+  { code:'fr',  name:'French' },
+  { code:'de',  name:'German' },
+  { code:'it',  name:'Italian' },
+  { code:'pt',  name:'Portuguese' },
+  { code:'nl',  name:'Dutch' },
+  { code:'ru',  name:'Russian' },
+  { code:'pl',  name:'Polish' },
+  { code:'sv',  name:'Swedish' },
+  { code:'tr',  name:'Turkish' },
+  { code:'el',  name:'Greek' },
+  { code:'ar',  name:'Arabic' },
+  { code:'hi',  name:'Hindi' },
+  { code:'zh',  name:'Chinese (Mandarin)' },
+  { code:'ja',  name:'Japanese' },
+  { code:'ko',  name:'Korean' },
+  { code:'vi',  name:'Vietnamese' },
+  { code:'id',  name:'Indonesian' },
+  { code:'sw',  name:'Swahili' },
+];
+
+/* ── YOUR API BASE URL ──
+   Replace this with your actual API host. The code uses two endpoints:
+     POST {API_BASE}/translate   { text, source_lang, target_lang, gender }  → { translation }
+     POST {API_BASE}/tts         { text, lang, gender }                      → { audio_url }  (or raw audio blob)
+*/
+const API_BASE = 'https://your-api.example.com';
+
+let sourceLang = 'en';
+let targetLang = 'lak';
+let voiceGender = 'male';
+let currentAudio = null;
+
+function populateLanguageSelects(){
+  const fromSel = document.getElementById('lang-from');
+  const toSel   = document.getElementById('lang-to');
+  const opts = LANGUAGES.map(l => `<option value="${l.code}">${l.name}</option>`).join('');
+  fromSel.innerHTML = opts;
+  toSel.innerHTML   = opts;
+  fromSel.value = sourceLang;
+  toSel.value   = targetLang;
+  syncPaneLabels();
+}
+
+function langName(code){
+  const l = LANGUAGES.find(x => x.code === code);
+  return l ? l.name : code;
+}
+
+function syncPaneLabels(){
+  document.getElementById('pane-from-label').textContent = langName(sourceLang);
+  document.getElementById('pane-to-label').textContent   = langName(targetLang);
+}
+
+function onLangChange(which){
+  const fromSel = document.getElementById('lang-from');
+  const toSel   = document.getElementById('lang-to');
+
+  // ── Rule: exactly ONE side must be Lakota at all times ──
+  // (translations are only Language ⇄ Lakota, never Language ⇄ Language)
+  if (which === 'from') {
+    if (fromSel.value === 'lak') {
+      // user just put Lakota on the source side → force target to a non-Lakota
+      if (toSel.value === 'lak') toSel.value = (sourceLang !== 'lak' ? sourceLang : 'en');
+    } else {
+      // user picked a non-Lakota source → force target to Lakota
+      toSel.value = 'lak';
+    }
+  } else { // which === 'to'
+    if (toSel.value === 'lak') {
+      if (fromSel.value === 'lak') fromSel.value = (targetLang !== 'lak' ? targetLang : 'en');
+    } else {
+      fromSel.value = 'lak';
+    }
+  }
+
+  sourceLang = fromSel.value;
+  targetLang = toSel.value;
+  syncPaneLabels();
+  // Clear stale output since language pair changed
+  document.getElementById('t-output').value = '';
+  refreshTTSButtons();
+  document.getElementById('t-error').classList.remove('on');
+}
+
+function swapLangs(){
+  const fromSel = document.getElementById('lang-from');
+  const toSel   = document.getElementById('lang-to');
+  [fromSel.value, toSel.value] = [toSel.value, fromSel.value];
+  sourceLang = fromSel.value;
+  targetLang = toSel.value;
+  syncPaneLabels();
+
+  const inp = document.getElementById('t-input');
+  const out = document.getElementById('t-output');
+  [inp.value, out.value] = [out.value, inp.value];
+  updateCharCount();
+  refreshTTSButtons();
+}
+
+function setGender(el, gender){
+  document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  voiceGender = gender;
+}
+
+function onTranslateInput(){
+  updateCharCount();
+  document.getElementById('t-error').classList.remove('on');
+  refreshTTSButtons();
+}
+function updateCharCount(){
+  document.getElementById('char-n').textContent =
+    document.getElementById('t-input').value.length;
+}
+function clearTranslate(){
+  stopTTS();
+  document.getElementById('t-input').value='';
+  document.getElementById('t-output').value='';
+  document.getElementById('char-n').textContent='0';
+  document.getElementById('t-error').classList.remove('on');
+  refreshTTSButtons();
+}
+function refreshTTSButtons(){
+  const hasIn  = document.getElementById('t-input').value.trim().length > 0;
+  const hasOut = document.getElementById('t-output').value.trim().length > 0;
+  document.getElementById('tts-input-btn').disabled  = !hasIn;
+  document.getElementById('tts-output-btn').disabled = !hasOut;
+}
+
+/* ── COMMON PHRASES (always in English → Lakota) ── */
+const PHRASES=[
+  {en:'Hello','lak':'Háu'},
+  {en:'Thank you','lak':'Philámayaye'},
+  {en:'All my relations','lak':'Mitákuye Oyásʼiŋ'},
+  {en:'Great Spirit','lak':'Wakȟáŋ Tȟáŋka'},
+  {en:'Water is life','lak':'Mní Wičhóni'},
+  {en:'Good day','lak':'Aŋpétu wašté'},
+  {en:'I love you','lak':'Čhaŋtéčhilapi'},
+  {en:'The people','lak':'Oyáte'},
+];
+function renderPhraseChips(){
+  const row=document.getElementById('phrase-row');
+  PHRASES.forEach(ph=>{
+    const b=document.createElement('button');
+    b.className='phrase-chip';
+    b.textContent=ph.en;
+    b.setAttribute('data-testid', 'phrase-chip-' + ph.en.toLowerCase().replace(/\s+/g,'-'));
+    b.onclick=()=>{
+      // Phrase chips are English → Lakota. Force that pair.
+      document.getElementById('lang-from').value = 'en';
+      document.getElementById('lang-to').value   = 'lak';
+      sourceLang = 'en';
+      targetLang = 'lak';
+      syncPaneLabels();
+      document.getElementById('t-input').value=ph.en;
+      updateCharCount();
+      doTranslate();
+    };
+    row.appendChild(b);
+  });
+}
+
+/*
+ * ── doTranslate ──────────────────────────────────────────
+ * Sends { text, source_lang, target_lang, gender } to YOUR API.
+ * Replace API_BASE above and adjust the response shape if needed.
+ * ──────────────────────────────────────────────────────── */
+async function doTranslate(){
+  const text = document.getElementById('t-input').value.trim();
+  if(!text) return;
+  setTranslateLoading(true);
+  document.getElementById('t-error').classList.remove('on');
+
+  try {
+    // ── YOUR API CALL ────────────────────────────────────
+    // Uncomment when your backend is reachable:
+    //
+    // const res = await fetch(`${API_BASE}/translate`, {
+    //   method:'POST',
+    //   headers:{ 'Content-Type':'application/json' },
+    //   body: JSON.stringify({
+    //     text,
+    //     source_lang: sourceLang,
+    //     target_lang: targetLang,
+    //     gender: voiceGender
+    //   })
+    // });
+    // if(!res.ok) throw new Error('HTTP ' + res.status);
+    // const data = await res.json();
+    // document.getElementById('t-output').value = data.translation;
+
+    // ── PLACEHOLDER (remove once your API is wired in) ──
+    await new Promise(r => setTimeout(r, 600));
+    document.getElementById('t-output').value =
+      `[${langName(targetLang)} translation of "${text}" — ` +
+      `source=${sourceLang}, target=${targetLang}, voice=${voiceGender}. ` +
+      `Connect your API at ${API_BASE}/translate]`;
+    // ────────────────────────────────────────────────────
+
+  } catch(err) {
+    showTranslateError('Translation failed. Please check your connection and try again.');
+  } finally {
+    setTranslateLoading(false);
+    refreshTTSButtons();
+  }
+}
+
+/*
+ * ── playTTS ──────────────────────────────────────────────
+ * which = 'input' | 'output'
+ * Sends { text, lang, gender } to YOUR /tts endpoint and plays it.
+ * Expects either { audio_url } JSON OR a raw audio response.
+ * ──────────────────────────────────────────────────────── */
+async function playTTS(which){
+  const isInput = which === 'input';
+  const text = document.getElementById(isInput ? 't-input' : 't-output').value.trim();
+  const lang = isInput ? sourceLang : targetLang;
+  const btn  = document.getElementById(isInput ? 'tts-input-btn' : 'tts-output-btn');
+  if(!text) return;
+
+  // If something is already playing, stop it
+  stopTTS();
+  btn.classList.add('playing');
+  btn.querySelector('.tts-lbl').textContent = 'Playing…';
+
+  try {
+    // ── YOUR API CALL ────────────────────────────────────
+    // Option A — JSON response with audio URL:
+    //
+    // const res = await fetch(`${API_BASE}/tts`, {
+    //   method:'POST',
+    //   headers:{ 'Content-Type':'application/json' },
+    //   body: JSON.stringify({ text, lang, gender: voiceGender })
+    // });
+    // if(!res.ok) throw new Error('HTTP ' + res.status);
+    // const data = await res.json();
+    // const audio = new Audio(data.audio_url);
+    //
+    // Option B — raw audio blob response:
+    //
+    // const res  = await fetch(`${API_BASE}/tts`, { ... });
+    // const blob = await res.blob();
+    // const audio = new Audio(URL.createObjectURL(blob));
+
+    // ── PLACEHOLDER: use browser SpeechSynthesis so the button is functional now ──
+    await new Promise(r => setTimeout(r, 250));
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(text);
+      // Best-effort lang code mapping (browser TTS rarely has Lakota; falls back to default voice)
+      const browserLangMap = {
+        en:'en-US', es:'es-ES', fr:'fr-FR', de:'de-DE', it:'it-IT', pt:'pt-PT',
+        nl:'nl-NL', ru:'ru-RU', pl:'pl-PL', sv:'sv-SE', tr:'tr-TR', el:'el-GR',
+        ar:'ar-SA', hi:'hi-IN', zh:'zh-CN', ja:'ja-JP', ko:'ko-KR',
+        vi:'vi-VN', id:'id-ID', sw:'sw-KE', lak:'en-US'
+      };
+      u.lang = browserLangMap[lang] || 'en-US';
+      // Pick a male/female voice when available
+      const voices = window.speechSynthesis.getVoices();
+      const match = voices.find(v =>
+        v.lang.toLowerCase().startsWith(u.lang.split('-')[0].toLowerCase()) &&
+        (voiceGender === 'female'
+          ? /female|woman|samantha|victoria|karen|moira|tessa|fiona/i.test(v.name)
+          : /male|man|daniel|alex|fred|tom|oliver/i.test(v.name))
+      );
+      if (match) u.voice = match;
+      u.onend = () => resetTTSButton(btn);
+      u.onerror = () => resetTTSButton(btn);
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+      currentAudio = { kind:'speech' };
+    } else {
+      resetTTSButton(btn);
+    }
+    // ────────────────────────────────────────────────────
+
+  } catch(err) {
+    showTranslateError('Text-to-speech failed. Please try again.');
+    resetTTSButton(btn);
+  }
+}
+
+function resetTTSButton(btn){
+  btn.classList.remove('playing');
+  btn.querySelector('.tts-lbl').textContent = 'Listen';
+  currentAudio = null;
+}
+function stopTTS(){
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  if (currentAudio && currentAudio.audio) {
+    try { currentAudio.audio.pause(); } catch(e){}
+  }
+  document.querySelectorAll('.tts-btn.playing').forEach(b => {
+    b.classList.remove('playing');
+    const lbl = b.querySelector('.tts-lbl');
+    if (lbl) lbl.textContent = 'Listen';
+  });
+  currentAudio = null;
+}
+
+function setTranslateLoading(on){
+  document.getElementById('t-loading').classList.toggle('on',on);
+}
+function showTranslateError(msg){
+  const el=document.getElementById('t-error');
+  el.textContent=msg; el.classList.add('on');
+}
+
+/* ════════════════════════════════════
+   ── DICTIONARY PAGE ──
+   Replace DICT_DATA or fetchDictData()
+   with your database/API response.
+════════════════════════════════════ */
+
+/*
+ * ── fetchDictData ─────────────────────────────────────────
+ * Replace this function with a real fetch to your database.
+ *
+ * Example:
+ *   const res  = await fetch(`https://your-api.com/dictionary?q=${query}&pos=${activeFilter}`);
+ *   const data = await res.json();
+ *   return data.entries; // array of { lakota, pos, en, example }
+ * ──────────────────────────────────────────────────────── */
+const DICT_DATA=[
+  {lakota:'Wičháhpi',      pos:'noun',      en:'Star — a celestial body in the night sky. Stars hold spiritual significance in Lakota cosmology.',          example:'"Wičháhpi tȟaŋíŋ" — the star is visible.'},
+  {lakota:'Mitákuye Oyásʼiŋ', pos:'phrase', en:'All My Relations — a sacred prayer acknowledging the interconnectedness of all living things.',             example:'Spoken at the start and end of ceremonies.'},
+  {lakota:'Wakȟáŋ Tȟáŋka', pos:'noun',     en:'Great Spirit — the supreme spiritual force in Lakota belief; the creator and sustainer of all life.',       example:'"Wakȟáŋ Tȟáŋka ohóla po" — respect the Great Spirit.'},
+  {lakota:'Tȟatȟáŋka',     pos:'noun',      en:'Buffalo — central to Lakota life for food, shelter, and ceremony. Symbol of abundance and providence.',    example:'"Tȟatȟáŋka čhaŋtéčhila" — I love/honor the buffalo.'},
+  {lakota:'Waŋblí',        pos:'noun',      en:'Eagle — sacred messenger between humans and the spirit world. Eagle feathers are deeply honored gifts.',     example:'"Waŋblí kiŋ kíŋyaŋ" — the eagle flies.'},
+  {lakota:'Mní Wičhóni',   pos:'phrase',    en:'Water is Life — a declaration of the sacredness of water as the source of all living things.',              example:'A call to protect water and land.'},
+  {lakota:'Pahá Sápa',     pos:'noun',      en:'Black Hills — the sacred mountain range in South Dakota, heart of Lakota territory and spiritual life.',     example:'"Pahá Sápa wakhán" — the Black Hills are sacred.'},
+  {lakota:'Čhaŋté',        pos:'noun',      en:'Heart — the seat of courage, love, and spirit in Lakota understanding.',                                    example:'"Čhaŋté wašté" — good heart / brave heart.'},
+  {lakota:'Haŋblečheyapi', pos:'ceremony',  en:'Vision Quest — a sacred ceremony in which one seeks spiritual guidance through fasting and prayer in solitude.', example:'A rite of passage for Lakota youth.'},
+  {lakota:'Philámayaye',   pos:'phrase',    en:'Thank you — an expression of gratitude. Recognizes the gift or action of another.',                         example:'"Philámayaye čhaŋtéčhilapi" — thank you, I love you all.'},
+  {lakota:'Wašté',         pos:'adjective', en:'Good, beautiful, pleasing — describes moral goodness, aesthetic beauty, or well-being.',                    example:'"Aŋpétu wašté" — it is a good day.'},
+  {lakota:'Wakhán',        pos:'adjective', en:'Sacred, holy, mysterious — that which possesses spiritual power beyond ordinary understanding.',              example:'"Čhaŋnúŋpa wakhán" — the pipe is sacred.'},
+  {lakota:'Oyáte',         pos:'noun',      en:'The People, nation — the Lakota people as a collective nation and community.',                               example:'"Oyáte kiŋ ečhúŋ pi" — the people do it together.'},
+  {lakota:'Šúŋkawakȟáŋ',  pos:'noun',      en:'Horse — literally "sacred dog." Horses transformed Lakota culture on the Plains.',                         example:'"Šúŋkawakȟáŋ kiŋ lúzahaŋ" — the horse is fast.'},
+  {lakota:'Akíčhita',      pos:'noun',      en:'Warrior, soldier — a protector of the people. Akíčhita society members kept order within the community.',  example:'"Akíčhita wašté" — a good warrior.'},
+  {lakota:'Aŋpétu Wí',    pos:'noun',      en:'Sun — literally "day sun." One of the most sacred forces in Lakota spirituality and ceremony.',              example:'"Aŋpétu Wí iyáya" — the sun passes by.'},
+  {lakota:'Haŋhépi Wí',   pos:'noun',      en:'Moon — literally "night sun." Marks time and guides ceremony across the seasons.',                           example:'"Haŋhépi Wí tȟaŋíŋ" — the moon is visible.'},
+  {lakota:'Makȟá',         pos:'noun',      en:'Earth, land — the sacred ground beneath us. Makȟá is both mother and provider in Lakota belief.',           example:'"Makȟá kiŋ wakhán" — the earth is sacred.'},
+  {lakota:'Čhankú Lúta',  pos:'noun',      en:'Red Road — the path of right living; the spiritual and moral way of walking through life.',                  example:'Walking the Čhankú Lúta is a lifelong practice.'},
+  {lakota:'Inipi',         pos:'ceremony',  en:'Sweat Lodge ceremony — a purification rite using heated stones and steam, central to Lakota spiritual life.', example:'Inipi is performed before major ceremonies.'},
+  {lakota:'Čhaŋnúŋpa',    pos:'noun',      en:'Sacred Pipe — the most holy object in Lakota spiritual life, used in prayer and ceremony.',                  example:'"Čhaŋnúŋpa wakhán kiŋ" — the sacred pipe.'},
+  {lakota:'Kiŋyáŋ',       pos:'verb',      en:'To fly — movement through the air; used for birds, spirits, and anything carried on the wind.',              example:'"Waŋblí kiŋyáŋ" — the eagle flies.'},
+  {lakota:'Wóčhekiye',    pos:'noun',      en:'Prayer — a sacred act of communication with the spirit world and the Great Spirit.',                         example:'"Wóčhekiye čhaŋté etáŋhaŋ" — prayer from the heart.'},
+  {lakota:'Niyá',         pos:'noun',      en:'Breath, spirit, life force — the animating essence within all living beings.',                               example:'"Niyá kiŋ čhaŋtéčhila" — I cherish the breath of life.'},
+];
+
+let activeFilter='all';
+let dictDebounce;
+
+function setFilter(el,pos){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter=pos;
+  onDictSearch();
+}
+
+function onDictSearch(){
+  clearTimeout(dictDebounce);
+  dictDebounce=setTimeout(renderDict,180);
+}
+
+async function renderDict(){
+  const q=(document.getElementById('dict-q')?.value||'').toLowerCase().trim();
+  setDictLoading(true);
+
+  try {
+    // ── YOUR DATABASE/API CALL GOES HERE ────────────────
+    // Example:
+    //   const res = await fetch(`/api/dictionary?q=${encodeURIComponent(q)}&pos=${activeFilter}`);
+    //   const entries = await res.json();
+    //
+    // For now we filter the local DICT_DATA:
+    await new Promise(r=>setTimeout(r,0)); // microtask yield
+    let entries=DICT_DATA;
+    if(activeFilter!=='all') entries=entries.filter(e=>e.pos===activeFilter||e.pos.includes(activeFilter));
+    if(q) entries=entries.filter(e=>
+      e.lakota.toLowerCase().includes(q)||
+      e.en.toLowerCase().includes(q)||
+      e.pos.toLowerCase().includes(q)
+    );
+    // ────────────────────────────────────────────────────
+
+    const grid=document.getElementById('dict-grid');
+    const meta=document.getElementById('dict-meta');
+    const empty=document.getElementById('dict-empty');
+    meta.innerHTML=`Showing <strong>${entries.length}</strong> entr${entries.length===1?'y':'ies'}${q?` for "<em>${q}</em>"`:''}.`;
+    if(entries.length===0){
+      grid.innerHTML=''; empty.style.display='block';
+    } else {
+      empty.style.display='none';
+      grid.innerHTML=entries.map(e=>`
+        <div class="dict-entry">
+          <div class="de-lakota">${e.lakota}</div>
+          <div class="de-pos">${e.pos}</div>
+          <div class="de-en">${e.en}</div>
+          ${e.example?`<div class="de-example">${e.example}</div>`:''}
+        </div>
+      `).join('');
+    }
+  } catch(err){
+    document.getElementById('dict-grid').innerHTML=
+      `<div style="color:var(--muted);font-size:0.85rem;padding:2rem 0;">Failed to load dictionary. Please try again.</div>`;
+  } finally {
+    setDictLoading(false);
+  }
+}
+
+function setDictLoading(on){
+  document.getElementById('dict-loading').classList.toggle('on',on);
+  if(on) document.getElementById('dict-grid').innerHTML='';
+}
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"7f7b0fd8732c4326aae4b9d58d5c514a","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
