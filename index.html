@@ -743,6 +743,8 @@ footer strong { color:var(--gold-dim); font-weight:400; }
 
 </div><!-- /shell -->
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
 <script>
 /* ════════════════════════════════════
    GALAXY INTRO  — complete rewrite
@@ -806,7 +808,6 @@ footer strong { color:var(--gold-dim); font-weight:400; }
   for(let i=0;i<STARS;i++){
     // which arm?
     const arm   = Math.floor(Math.random()*NUM_ARMS);
-    // distance from centre  (weighted toward middle)
     const dist  = Math.pow(Math.random(), 0.45);
     // base angle for this arm
     const armAngle = (arm / NUM_ARMS) * Math.PI * 2;
@@ -815,7 +816,6 @@ footer strong { color:var(--gold-dim); font-weight:400; }
     const spread = (Math.random()-0.5) * (0.55 - dist*0.3);  // wider at edges
     const angle = armAngle + wind + spread;
 
-    // flatten into a disc
     const maxR  = 0.42 * Math.min(W||800, H||600);
     const px    = Math.cos(angle) * dist * maxR;
     const py    = Math.sin(angle) * dist * maxR * 0.48;  // disc flattening
@@ -1319,41 +1319,7 @@ function showTranslateError(msg){
    with your database/API response.
 ════════════════════════════════════ */
 
-/*
- * ── fetchDictData ─────────────────────────────────────────
- * Replace this function with a real fetch to your database.
- *
- * Example:
- *   const res  = await fetch(`https://your-api.com/dictionary?q=${query}&pos=${activeFilter}`);
- *   const data = await res.json();
- *   return data.entries; // array of { lakota, pos, en, example }
- * ──────────────────────────────────────────────────────── */
-const DICT_DATA=[
-  {lakota:'Wičháhpi',      pos:'noun',      en:'Star — a celestial body in the night sky. Stars hold spiritual significance in Lakota cosmology.',          example:'"Wičháhpi tȟaŋíŋ" — the star is visible.'},
-  {lakota:'Mitákuye Oyásʼiŋ', pos:'phrase', en:'All My Relations — a sacred prayer acknowledging the interconnectedness of all living things.',             example:'Spoken at the start and end of ceremonies.'},
-  {lakota:'Wakȟáŋ Tȟáŋka', pos:'noun',     en:'Great Spirit — the supreme spiritual force in Lakota belief; the creator and sustainer of all life.',       example:'"Wakȟáŋ Tȟáŋka ohóla po" — respect the Great Spirit.'},
-  {lakota:'Tȟatȟáŋka',     pos:'noun',      en:'Buffalo — central to Lakota life for food, shelter, and ceremony. Symbol of abundance and providence.',    example:'"Tȟatȟáŋka čhaŋtéčhila" — I love/honor the buffalo.'},
-  {lakota:'Waŋblí',        pos:'noun',      en:'Eagle — sacred messenger between humans and the spirit world. Eagle feathers are deeply honored gifts.',     example:'"Waŋblí kiŋ kíŋyaŋ" — the eagle flies.'},
-  {lakota:'Mní Wičhóni',   pos:'phrase',    en:'Water is Life — a declaration of the sacredness of water as the source of all living things.',              example:'A call to protect water and land.'},
-  {lakota:'Pahá Sápa',     pos:'noun',      en:'Black Hills — the sacred mountain range in South Dakota, heart of Lakota territory and spiritual life.',     example:'"Pahá Sápa wakhán" — the Black Hills are sacred.'},
-  {lakota:'Čhaŋté',        pos:'noun',      en:'Heart — the seat of courage, love, and spirit in Lakota understanding.',                                    example:'"Čhaŋté wašté" — good heart / brave heart.'},
-  {lakota:'Haŋblečheyapi', pos:'ceremony',  en:'Vision Quest — a sacred ceremony in which one seeks spiritual guidance through fasting and prayer in solitude.', example:'A rite of passage for Lakota youth.'},
-  {lakota:'Philámayaye',   pos:'phrase',    en:'Thank you — an expression of gratitude. Recognizes the gift or action of another.',                         example:'"Philámayaye čhaŋtéčhilapi" — thank you, I love you all.'},
-  {lakota:'Wašté',         pos:'adjective', en:'Good, beautiful, pleasing — describes moral goodness, aesthetic beauty, or well-being.',                    example:'"Aŋpétu wašté" — it is a good day.'},
-  {lakota:'Wakhán',        pos:'adjective', en:'Sacred, holy, mysterious — that which possesses spiritual power beyond ordinary understanding.',              example:'"Čhaŋnúŋpa wakhán" — the pipe is sacred.'},
-  {lakota:'Oyáte',         pos:'noun',      en:'The People, nation — the Lakota people as a collective nation and community.',                               example:'"Oyáte kiŋ ečhúŋ pi" — the people do it together.'},
-  {lakota:'Šúŋkawakȟáŋ',  pos:'noun',      en:'Horse — literally "sacred dog." Horses transformed Lakota culture on the Plains.',                         example:'"Šúŋkawakȟáŋ kiŋ lúzahaŋ" — the horse is fast.'},
-  {lakota:'Akíčhita',      pos:'noun',      en:'Warrior, soldier — a protector of the people. Akíčhita society members kept order within the community.',  example:'"Akíčhita wašté" — a good warrior.'},
-  {lakota:'Aŋpétu Wí',    pos:'noun',      en:'Sun — literally "day sun." One of the most sacred forces in Lakota spirituality and ceremony.',              example:'"Aŋpétu Wí iyáya" — the sun passes by.'},
-  {lakota:'Haŋhépi Wí',   pos:'noun',      en:'Moon — literally "night sun." Marks time and guides ceremony across the seasons.',                           example:'"Haŋhépi Wí tȟaŋíŋ" — the moon is visible.'},
-  {lakota:'Makȟá',         pos:'noun',      en:'Earth, land — the sacred ground beneath us. Makȟá is both mother and provider in Lakota belief.',           example:'"Makȟá kiŋ wakhán" — the earth is sacred.'},
-  {lakota:'Čhankú Lúta',  pos:'noun',      en:'Red Road — the path of right living; the spiritual and moral way of walking through life.',                  example:'Walking the Čhankú Lúta is a lifelong practice.'},
-  {lakota:'Inipi',         pos:'ceremony',  en:'Sweat Lodge ceremony — a purification rite using heated stones and steam, central to Lakota spiritual life.', example:'Inipi is performed before major ceremonies.'},
-  {lakota:'Čhaŋnúŋpa',    pos:'noun',      en:'Sacred Pipe — the most holy object in Lakota spiritual life, used in prayer and ceremony.',                  example:'"Čhaŋnúŋpa wakhán kiŋ" — the sacred pipe.'},
-  {lakota:'Kiŋyáŋ',       pos:'verb',      en:'To fly — movement through the air; used for birds, spirits, and anything carried on the wind.',              example:'"Waŋblí kiŋyáŋ" — the eagle flies.'},
-  {lakota:'Wóčhekiye',    pos:'noun',      en:'Prayer — a sacred act of communication with the spirit world and the Great Spirit.',                         example:'"Wóčhekiye čhaŋté etáŋhaŋ" — prayer from the heart.'},
-  {lakota:'Niyá',         pos:'noun',      en:'Breath, spirit, life force — the animating essence within all living beings.',                               example:'"Niyá kiŋ čhaŋtéčhila" — I cherish the breath of life.'},
-];
+
 
 let activeFilter='all';
 let dictDebounce;
@@ -1367,30 +1333,111 @@ function setFilter(el,pos){
 
 function onDictSearch(){
   clearTimeout(dictDebounce);
-  dictDebounce=setTimeout(renderDict,180);
+  dictDebounce=setTimeout(renderDict,500);
 }
+client = null;
+function similarity(a, b) {
+  // simple token overlap similarity
+  const A = a.toLowerCase().split(/\W+/);
+  const B = b.toLowerCase().split(/\W+/);
+  const setA = new Set(A);
+  const setB = new Set(B);
+  let overlap = 0;
+
+  for (const w of setA) {
+    if (setB.has(w)) overlap++;
+  }
+
+  return overlap / Math.max(setA.size, setB.size);
+}
+
+
+function scoreEntry(entry, query) {
+  const q = query.toLowerCase();
+  const word = entry.word.toLowerCase();
+  const raw = entry.wordstring.toLowerCase();
+  const def = entry.definition.toLowerCase();
+  let score = 0;
+
+  // -----------------------------
+  // 1. Lakota word relevance
+  // -----------------------------
+  if (word === q || raw === q) score += 100;          // exact match
+  else if (word.includes(q) || raw.includes(q)) score += 40; // substring
+
+  // -----------------------------
+  // 2. Definition relevance
+  // -----------------------------
+  const d = def.toLowerCase();
+
+    if (d === q) score += 90;                         // exact definition match
+    else if (d.includes(q)) score += 60;              // partial match
+
+    // semantic similarity (token overlap)
+    const sim = similarity(d, q);
+    score += sim * 100   
+
+  return score;
+}
+
+function sortByRelevance(entries, query) {
+  return entries
+    .map(e => ({ ...e, _score: scoreEntry(e, query) }))
+    .sort((a, b) => b._score - a._score);
+}
+
+
+function parsedEntries(rawEntries) {
+  console.log(rawEntries);
+  return rawEntries.map(e => ({
+    lakota: e.word, 
+    pos: e.pos,
+    en: e.definition
+  }));
+}
+
+async function loadDictionaryEntries(q) {
+  if (q && q.trim() !== '') {
+    const { data, error } = await client
+      .rpc('search_entries', { search_query: q });
+    if (error) {
+      console.error('Error fetching dictionary entries:', error);
+      return [];
+    }
+
+    const rows = Array.isArray(data) ? data : [];
+    const sorted = sortByRelevance(rows, q);
+    return parsedEntries(sorted, q);
+  }
+
+  // no query → load first 100
+  const { data, error } = await client
+    .from('words_table')
+    .select('*')
+    .range(0, 20);
+  if (error) {
+    console.error('Error fetching dictionary entries:', error);
+    return [];
+  }
+  print(data);
+  return parsedEntries(data);
+}
+
 
 async function renderDict(){
   const q=(document.getElementById('dict-q')?.value||'').toLowerCase().trim();
   setDictLoading(true);
 
   try {
-    // ── YOUR DATABASE/API CALL GOES HERE ────────────────
-    // Example:
-    //   const res = await fetch(`/api/dictionary?q=${encodeURIComponent(q)}&pos=${activeFilter}`);
-    //   const entries = await res.json();
-    //
-    // For now we filter the local DICT_DATA:
     await new Promise(r=>setTimeout(r,0)); // microtask yield
-    let entries=DICT_DATA;
-    if(activeFilter!=='all') entries=entries.filter(e=>e.pos===activeFilter||e.pos.includes(activeFilter));
-    if(q) entries=entries.filter(e=>
-      e.lakota.toLowerCase().includes(q)||
-      e.en.toLowerCase().includes(q)||
-      e.pos.toLowerCase().includes(q)
-    );
-    // ────────────────────────────────────────────────────
-
+    if(client==null) {
+      client = supabase.createClient(
+        "https://zjrjurfmdvgcsvtiwjee.supabase.co",
+        "sb_publishable_dI74jDQqfquv8rg2MCS7SA_wNi_mQ6t"
+      )
+    }
+    let entries= await loadDictionaryEntries(q);
+    console.log(entries);
     const grid=document.getElementById('dict-grid');
     const meta=document.getElementById('dict-meta');
     const empty=document.getElementById('dict-empty');
