@@ -1,0 +1,93 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="18%" stop-color="#c9f7ff"/>
+      <stop offset="42%" stop-color="#00e5ff"/>
+      <stop offset="75%" stop-color="#a23bd9"/>
+      <stop offset="100%" stop-color="#ff2bd6" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="armA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="50%" stop-color="#c73bf0"/>
+      <stop offset="100%" stop-color="#ff2bd6"/>
+    </linearGradient>
+
+    <linearGradient id="armB" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff8a2a"/>
+      <stop offset="55%" stop-color="#ff2bd6"/>
+      <stop offset="100%" stop-color="#7a2bff"/>
+    </linearGradient>
+
+    <radialGradient id="haze" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7a2bff" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#3a1470" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#3a1470" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+
+    <radialGradient id="starGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- outer nebula haze -->
+  <circle cx="256" cy="256" r="240" fill="url(#haze)"/>
+
+  <!-- background scattered stars -->
+  <g fill="#ffffff">
+    <circle cx="70" cy="90" r="2.4" opacity="0.9"/>
+    <circle cx="120" cy="55" r="1.6" opacity="0.7"/>
+    <circle cx="430" cy="80" r="2" opacity="0.8"/>
+    <circle cx="465" cy="150" r="1.4" opacity="0.6"/>
+    <circle cx="60" cy="230" r="1.8" opacity="0.7"/>
+    <circle cx="55" cy="380" r="2.2" opacity="0.85"/>
+    <circle cx="90" cy="440" r="1.5" opacity="0.6"/>
+    <circle cx="420" cy="420" r="2.4" opacity="0.9"/>
+    <circle cx="460" cy="350" r="1.6" opacity="0.7"/>
+    <circle cx="440" cy="460" r="1.4" opacity="0.6"/>
+    <circle cx="256" cy="30" r="1.8" opacity="0.7"/>
+    <circle cx="256" cy="482" r="1.8" opacity="0.7"/>
+    <circle cx="150" cy="470" r="1.4" opacity="0.6"/>
+    <circle cx="360" cy="60" r="1.4" opacity="0.6"/>
+  </g>
+
+  <!-- bright four-point sparkle stars -->
+  <g filter="url(#softGlow)" opacity="0.9">
+    <circle cx="405" cy="115" r="10" fill="url(#starGrad)"/>
+    <circle cx="100" cy="400" r="8" fill="url(#starGrad)"/>
+  </g>
+  <g fill="#ffffff">
+    <path d="M405 100 L408 112 L420 115 L408 118 L405 130 L402 118 L390 115 L402 112 Z"/>
+    <path d="M100 388 L102 397 L111 400 L102 403 L100 412 L98 403 L89 400 L98 397 Z"/>
+  </g>
+
+  <!-- spiral arms -->
+  <g filter="url(#glow)" stroke-linecap="round" fill="none">
+    <path d="M256 256 C 200 210, 200 130, 270 95 C 335 62, 410 100, 420 165"
+          stroke="url(#armA)" stroke-width="16" opacity="0.85"/>
+    <path d="M256 256 C 312 302, 312 382, 242 417 C 177 450, 102 412, 92 347"
+          stroke="url(#armB)" stroke-width="16" opacity="0.85"/>
+    <path d="M256 256 C 310 225, 385 235, 415 290"
+          stroke="url(#armA)" stroke-width="9" opacity="0.55"/>
+    <path d="M256 256 C 202 287, 127 277, 97 222"
+          stroke="url(#armB)" stroke-width="9" opacity="0.55"/>
+  </g>
+
+  <!-- glowing core -->
+  <circle cx="256" cy="256" r="72" fill="url(#core)" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="26" fill="#ffffff"/>
+</svg>
